@@ -97,8 +97,6 @@
 #include "xlat/kcm_protocols.h"
 #include "xlat/smc_protocols.h"
 
-const size_t inet_protocols_size = ARRAY_SIZE(inet_protocols) - 1;
-
 static void
 decode_sockbuf(struct tcb *const tcp, const int fd, const kernel_ulong_t addr,
 	       const kernel_ulong_t addrlen)
@@ -141,7 +139,7 @@ SYS_FUNC(socket)
 	switch (tcp->u_arg[0]) {
 	case AF_INET:
 	case AF_INET6:
-		printxval_search(inet_protocols, tcp->u_arg[2], "IPPROTO_???");
+		printxval(inet_protocols, tcp->u_arg[2], "IPPROTO_???");
 		break;
 
 	case AF_NETLINK:
@@ -491,7 +489,7 @@ print_sockopt_fd_level_name(struct tcb *tcp, int fd, unsigned int level,
 		printxval(sock_packet_options, name, "PACKET_???");
 		break;
 	case SOL_TCP:
-		printxval_index(sock_tcp_options, name, "TCP_???");
+		printxval(sock_tcp_options, name, "TCP_???");
 		break;
 	case SOL_SCTP:
 		printxval(sock_sctp_options, name, "SCTP_???");
@@ -530,7 +528,7 @@ print_sockopt_fd_level_name(struct tcb *tcp, int fd, unsigned int level,
 		printxval(sock_pnp_options, name, "PNPIPE_???");
 		break;
 	case SOL_RDS:
-		printxval_search(sock_rds_options, name, "RDS_???");
+		printxval(sock_rds_options, name, "RDS_???");
 		break;
 	case SOL_IUCV:
 		printxval(sock_iucv_options, name, "SO_???");
@@ -741,7 +739,7 @@ print_getsockopt(struct tcb *const tcp, const unsigned int level,
 			uint32_t buf;
 			print_array(tcp, addr, MIN(ulen, rlen) / sizeof(buf),
 				    &buf, sizeof(buf),
-				    tfetch_mem, print_uint32, 0);
+				    umoven_or_printaddr, print_uint32, 0);
 			break;
 			}
 		default:

@@ -64,25 +64,17 @@
  */
 static bool
 fetch_nlmsghdr(struct tcb *const tcp, struct nlmsghdr *const nlmsghdr,
-	       const kernel_ulong_t addr, const kernel_ulong_t len,
-	       const bool in_array)
+	       const kernel_ulong_t addr, const kernel_ulong_t len)
 {
 	if (len < sizeof(struct nlmsghdr)) {
 		printstr_ex(tcp, addr, len, QUOTE_FORCE_HEX);
 		return false;
 	}
 
-	if (tfetch_obj(tcp, addr, nlmsghdr))
-		return true;
+	if (umove_or_printaddr(tcp, addr, nlmsghdr))
+		return false;
 
-	if (in_array) {
-		tprints("...");
-		printaddr_comment(addr);
-	} else {
-		printaddr(addr);
-	}
-
-	return false;
+	return true;
 }
 
 static int
@@ -481,7 +473,7 @@ decode_nlmsgerr_attr_cookie(struct tcb *const tcp,
 	const size_t nmemb = len / sizeof(cookie);
 
 	print_array(tcp, addr, nmemb, &cookie, sizeof(cookie),
-		    tfetch_mem, print_cookie, 0);
+		    umoven_or_printaddr, print_cookie, 0);
 
 	return true;
 }
@@ -530,7 +522,7 @@ decode_nlmsgerr(struct tcb *const tcp,
 
 	if (len) {
 		tprints(", msg=");
-		if (fetch_nlmsghdr(tcp, &err.msg, addr, len, false)) {
+		if (fetch_nlmsghdr(tcp, &err.msg, addr, len)) {
 			unsigned int payload =
 				capped ? sizeof(err.msg) : err.msg.nlmsg_len;
 			if (payload > len)
@@ -615,7 +607,8 @@ decode_nlmsghdr_with_payload(struct tcb *const tcp,
 			     const kernel_ulong_t addr,
 			     const kernel_ulong_t len)
 {
-	const unsigned int nlmsg_len = MIN(nlmsghdr->nlmsg_len, len);
+	const unsigned int nlmsg_len =
+		nlmsghdr->nlmsg_len > len ? len : nlmsghdr->nlmsg_len;
 
 	if (nlmsg_len > NLMSG_HDRLEN)
 		tprints("{");
@@ -644,11 +637,10 @@ decode_netlink(struct tcb *const tcp,
 	}
 
 	struct nlmsghdr nlmsghdr;
-	bool is_array = false;
+	bool print_array = false;
 	unsigned int elt;
 
-	for (elt = 0; fetch_nlmsghdr(tcp, &nlmsghdr, addr, len, is_array);
-	     elt++) {
+	for (elt = 0; fetch_nlmsghdr(tcp, &nlmsghdr, addr, len); elt++) {
 		if (abbrev(tcp) && elt == max_strlen) {
 			tprints("...");
 			break;
@@ -665,9 +657,9 @@ decode_netlink(struct tcb *const tcp,
 				next_addr = addr + nlmsg_len;
 		}
 
-		if (!is_array && next_addr) {
+		if (!print_array && next_addr) {
 			tprints("[");
-			is_array = true;
+			print_array = true;
 		}
 
 		decode_nlmsghdr_with_payload(tcp, fd, family,
@@ -681,7 +673,7 @@ decode_netlink(struct tcb *const tcp,
 		len = next_len;
 	}
 
-	if (is_array) {
+	if (print_array) {
 		tprints("]");
 	}
 }

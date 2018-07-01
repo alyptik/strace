@@ -1,9 +1,7 @@
 #include "64/syscallent.h"
 
-/*
- * Arch-specific block, not used on AArch64.
- * [244 ... 259] = { },
- */
+/* Arch-specific block, not used on AArch64 */
+[244 ... 259] = { },
 
 /* Quote from asm-generic/unistd.h:
  *

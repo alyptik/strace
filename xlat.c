@@ -73,14 +73,9 @@ print_xlat_val(uint64_t val, enum xlat_style style)
 const char *
 xlookup(const struct xlat *xlat, const uint64_t val)
 {
-	static const struct xlat *pos;
-
-	if (xlat)
-		pos = xlat;
-
-	for (; pos->str != NULL; pos++)
-		if (pos->val == val)
-			return pos->str;
+	for (; xlat->str != NULL; xlat++)
+		if (xlat->val == val)
+			return xlat->str;
 	return NULL;
 }
 
@@ -95,24 +90,11 @@ xlat_bsearch_compare(const void *a, const void *b)
 const char *
 xlat_search(const struct xlat *xlat, const size_t nmemb, const uint64_t val)
 {
-	static const struct xlat *pos;
-	static size_t memb_left;
-
-	if (xlat) {
-		pos = xlat;
-		memb_left = nmemb;
-	}
-
 	const struct xlat *e =
 		bsearch((const void *) &val,
-			pos, memb_left, sizeof(*pos), xlat_bsearch_compare);
+			xlat, nmemb, sizeof(*xlat), xlat_bsearch_compare);
 
-	if (e) {
-		memb_left -= e - pos;
-		return e->str;
-	} else {
-		return NULL;
-	}
+	return e ? e->str : NULL;
 }
 
 /**
@@ -130,8 +112,6 @@ int
 printxvals_ex(const uint64_t val, const char *dflt, enum xlat_style style,
 	      const struct xlat *xlat, ...)
 {
-	static const struct xlat *last;
-
 	style = get_xlat_style(style);
 
 	if (xlat_verbose(style) == XLAT_STYLE_RAW) {
@@ -139,18 +119,11 @@ printxvals_ex(const uint64_t val, const char *dflt, enum xlat_style style,
 		return 0;
 	}
 
-	const char *str = NULL;
 	va_list args;
 
 	va_start(args, xlat);
-
-	if (!xlat)
-		xlat = last;
-
 	for (; xlat; xlat = va_arg(args, const struct xlat *)) {
-		last = xlat;
-
-		str = xlookup(xlat, val);
+		const char *str = xlookup(xlat, val);
 
 		if (str) {
 			if (xlat_verbose(style) == XLAT_STYLE_VERBOSE) {
@@ -160,18 +133,17 @@ printxvals_ex(const uint64_t val, const char *dflt, enum xlat_style style,
 				tprints(str);
 			}
 
-			goto printxvals_ex_end;
+			va_end(args);
+			return 1;
 		}
 	}
-
 	/* No hits -- print raw # instead. */
 	print_xlat_val(val, style);
 	tprints_comment(dflt);
 
-printxvals_ex_end:
 	va_end(args);
 
-	return !!str;
+	return 0;
 }
 
 int
@@ -254,28 +226,20 @@ printxval_searchn_ex(const struct xlat *xlat, size_t xlat_size, uint64_t val,
 				  xlat_search);
 }
 
-const char *
+static const char *
 xlat_idx(const struct xlat *xlat, size_t nmemb, uint64_t val)
 {
-	static const struct xlat *pos;
-	static size_t memb_left;
-
-	if (xlat) {
-		pos = xlat;
-		memb_left = nmemb;
-	}
-
-	if (val >= memb_left)
+	if (val >= nmemb)
 		return NULL;
 
-	if (val != pos[val].val) {
+	if (val != xlat[val].val) {
 		error_func_msg("Unexpected xlat value %" PRIu64
 			       " at index %" PRIu64,
-			       pos[val].val, val);
+			       xlat[val].val, val);
 		return NULL;
 	}
 
-	return pos[val].str;
+	return xlat[val].str;
 }
 
 int
@@ -487,25 +451,5 @@ print_xlat_ex(const uint64_t val, const char *str, enum xlat_style style)
 	case XLAT_STYLE_VERBOSE:
 		print_xlat_val(val, style);
 		tprints_comment(str);
-	}
-}
-
-void
-printxval_dispatch_ex(const struct xlat *xlat, size_t xlat_size, uint64_t val,
-		      const char *dflt, enum xlat_type xt,
-		      enum xlat_style style)
-{
-	switch (xt) {
-	case XT_NORMAL:
-		printxvals_ex(val, dflt, style, xlat, NULL);
-		break;
-
-	case XT_SORTED:
-		printxval_searchn_ex(xlat, xlat_size, val, dflt, style);
-		break;
-
-	case XT_INDEXED:
-		printxval_indexn_ex(xlat, xlat_size, val, dflt, style);
-		break;
 	}
 }

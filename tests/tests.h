@@ -117,9 +117,6 @@ void *tail_alloc(const size_t)
 void *tail_memdup(const void *, const size_t)
 	ATTRIBUTE_MALLOC ATTRIBUTE_ALLOC_SIZE((2));
 
-#define midtail_alloc(after_, before_) \
-	((void *) ((char *) tail_alloc(((before_) + (after_))) + (before_)))
-
 /*
  * Allocate an object of the specified type at the end
  * of a mapped memory region.
@@ -173,12 +170,6 @@ void print_quoted_string(const char *);
  * in a quoted form.
  */
 void print_quoted_cstring(const char *str, size_t size);
-
-/*
- * Print a NUL-terminated string `str' of length up to `size'
- * in a quoted form.
- */
-void print_quoted_stringn(const char *str, size_t size);
 
 /* Print memory in a quoted form with optional escape characters. */
 void print_quoted_memory_ex(const void *, size_t, bool quote,
@@ -294,6 +285,7 @@ f8ill_ptr_to_kulong(const void *const ptr)
 #endif
 #define LL_VAL_TO_PAIR(llval) LL_PAIR((long) ((llval) >> 32), (long) (llval))
 
+#define _STR(_arg) #_arg
 #define ARG_STR(_arg) (_arg), #_arg
 #define ARG_ULL_STR(_arg) _arg##ULL, #_arg
 

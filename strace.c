@@ -95,7 +95,10 @@ bool count_wallclock;
 unsigned int qflag;
 static unsigned int tflag;
 static bool rflag;
-static bool print_pid_pfx;
+#ifndef LIBPRINTSTRACE_COMPILE
+static
+#endif
+bool print_pid_pfx;
 
 /* -I n */
 enum {
@@ -144,8 +147,14 @@ static uid_t run_uid;
 static gid_t run_gid;
 
 unsigned int max_strlen = DEFAULT_STRLEN;
-static int acolumn = DEFAULT_ACOLUMN;
-static char *acolumn_spaces;
+#ifndef LIBPRINTSTRACE_COMPILE
+static
+#endif
+int acolumn = DEFAULT_ACOLUMN;
+#ifndef LIBPRINTSTRACE_COMPILE
+static
+#endif
+char *acolumn_spaces;
 
 /* Default output style for xlat entities */
 enum xlat_style xlat_verbosity = XLAT_STYLE_ABBREV;
@@ -156,7 +165,10 @@ static FILE *shared_log;
 static bool open_append;
 
 struct tcb *printing_tcp;
-static struct tcb *current_tcp;
+#ifndef LIBPRINTSTRACE_COMPILE
+static
+#endif
+struct tcb *current_tcp;
 
 static struct tcb **tcbtab;
 static unsigned int nprocs;
@@ -2681,6 +2693,7 @@ terminate(void)
 	exit(exit_code);
 }
 
+#ifndef LIBPRINTSTRACE_COMPILE
 int
 main(int argc, char *argv[])
 {
@@ -2695,3 +2708,4 @@ main(int argc, char *argv[])
 		;
 	terminate();
 }
+#endif

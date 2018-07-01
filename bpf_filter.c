@@ -53,13 +53,12 @@
 void
 print_bpf_filter_code(const uint16_t code, bool extended)
 {
+	const struct xlat *class = extended ? ebpf_class : bpf_class;
 	const struct xlat *mode = extended ? ebpf_mode : bpf_mode;
+
 	uint16_t i = code & ~BPF_CLASS(code);
 
-	if (extended)
-		printxval_index(ebpf_class, BPF_CLASS(code), "BPF_???");
-	else
-		printxval_index(bpf_class, BPF_CLASS(code), "BPF_???");
+	printxval(class, BPF_CLASS(code), "BPF_???");
 	switch (BPF_CLASS(code)) {
 	case BPF_ST:
 	case BPF_STX:
@@ -183,7 +182,7 @@ print_bpf_fprog(struct tcb *const tcp, const kernel_ulong_t addr,
 		struct bpf_filter_block filter;
 
 		print_array(tcp, addr, len, &filter, sizeof(filter),
-			    tfetch_mem, print_bpf_filter_block, &fbd);
+			    umoven_or_printaddr, print_bpf_filter_block, &fbd);
 	}
 }
 

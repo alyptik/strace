@@ -34,14 +34,9 @@ acct	-a20
 add_key	-a30 -s12
 adjtimex	-a15
 aio	-a14 -e trace=io_setup,io_submit,io_getevents,io_cancel,io_destroy
-aio_pgetevents	-e trace=io_pgetevents
 alarm	-a10
 bpf	-a20
 bpf-v	-a20 -v -e trace=bpf
-bpf-obj_get_info_by_fd	-a20 -y -e trace=bpf
-bpf-obj_get_info_by_fd-v	-a20 -y -v -e trace=bpf
-bpf-obj_get_info_by_fd-prog	-a20 -y -e trace=bpf
-bpf-obj_get_info_by_fd-prog-v	-a20 -y -v -e trace=bpf
 btrfs	+ioctl.test
 chmod	-a28
 chown	-a28
@@ -138,14 +133,12 @@ ioctl_dm	+ioctl.test -s9
 ioctl_dm-v	+ioctl.test -v -s9
 ioctl_evdev	+ioctl.test
 ioctl_evdev-v	+ioctl.test -v
-ioctl_inotify	+ioctl.test
 ioctl_kvm_run	+ioctl.test -a36 -y
 ioctl_loop	+ioctl.test
 ioctl_loop-nv	+ioctl.test -a22 -e verbose=none
 ioctl_loop-v	+ioctl.test -v
 ioctl_mtd	+ioctl.test
 ioctl_nsfs	+ioctl.test -esignal=none
-ioctl_perf	+ioctl.test
 ioctl_ptp 	+ioctl.test
 ioctl_rtc	+ioctl.test
 ioctl_rtc-v	+ioctl.test -v
@@ -181,9 +174,6 @@ kern_features -a16
 kexec_file_load	-s9
 kexec_load	-s9
 keyctl	-a31 -s10
-keyctl-Xabbrev	-a31 -s10 -e trace=keyctl -Xabbrev
-keyctl-Xraw	-a13 -s10 -e trace=keyctl -Xraw
-keyctl-Xverbose	-a41 -s10 -e trace=keyctl -Xverbose
 kill	-a12 -esignal=none
 lchown	-a30
 lchown32	-a32
@@ -263,9 +253,7 @@ nlattr_fib_rule_hdr		+netlink_sock_diag.test
 nlattr_ifaddrlblmsg		+netlink_sock_diag.test
 nlattr_ifaddrmsg		+netlink_sock_diag.test
 nlattr_ifinfomsg		+netlink_sock_diag.test
-nlattr_ifla_af_spec		+netlink_sock_diag.test
 nlattr_ifla_brport		+netlink_sock_diag.test
-nlattr_ifla_linkinfo		+netlink_sock_diag.test
 nlattr_ifla_port		+netlink_sock_diag.test
 nlattr_ifla_xdp			+netlink_sock_diag.test
 nlattr_inet_diag_msg		+netlink_sock_diag.test
@@ -454,12 +442,6 @@ times-fail	-a12 -e trace=times
 trace_fstat	test_trace_expr '' -e%fstat -v -P stat.sample -P /dev/full
 trace_fstatfs	test_trace_expr '' -e%fstatfs
 trace_lstat	test_trace_expr '' -e%lstat -v -P stat.sample -P /dev/full
-trace_personality_32	+qualify_personality.sh 32 'getcwd' 'fsync-y'
-trace_personality_64	+qualify_personality.sh 64 'getcwd' 'fsync-y'
-trace_personality_x32	+qualify_personality.sh x32 'getcwd' 'fsync-y'
-trace_personality_regex_32	+qualify_personality.sh 32 '/clock.*' 'times|fcntl.*'
-trace_personality_regex_64	+qualify_personality.sh 64 '/clock.*' 'times|fcntl.*'
-trace_personality_regex_x32	+qualify_personality.sh x32 '/clock.*' 'times|fcntl.*'
 trace_question	test_trace_expr '' -e?osf_utimes,?/^pkey_.*
 trace_stat	test_trace_expr '' -e%stat -v -P stat.sample -P /dev/full
 trace_stat_like	test_trace_expr '' -e%%stat -v -P stat.sample -P /dev/full

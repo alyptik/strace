@@ -12,7 +12,6 @@ acct
 add_key
 adjtimex
 aio
-aio_pgetevents
 alarm
 answer
 attach-f-p
@@ -22,12 +21,6 @@ attach-p-cmd-p
 block_reset_raise_run
 bpf
 bpf-v
-bpf-obj_get_info_by_fd
-bpf-obj_get_info_by_fd-v
-bpf-obj_get_info_by_fd-prog
-bpf-obj_get_info_by_fd-prog-v
-bpf-success
-bpf-success-v
 brk
 btrfs
 caps
@@ -143,15 +136,12 @@ ioctl_dm
 ioctl_dm-v
 ioctl_evdev
 ioctl_evdev-v
-ioctl_inotify
 ioctl_kvm_run
 ioctl_loop
 ioctl_loop-nv
 ioctl_loop-v
 ioctl_mtd
 ioctl_nsfs
-ioctl_perf
-ioctl_perf-success
 ioctl_ptp
 ioctl_rtc
 ioctl_rtc-v
@@ -189,9 +179,6 @@ kern_features
 kexec_file_load
 kexec_load
 keyctl
-keyctl-Xabbrev
-keyctl-Xraw
-keyctl-Xverbose
 kill
 ksysent
 ksysent.h
@@ -288,9 +275,7 @@ nlattr_fib_rule_hdr
 nlattr_ifaddrlblmsg
 nlattr_ifaddrmsg
 nlattr_ifinfomsg
-nlattr_ifla_af_spec
 nlattr_ifla_brport
-nlattr_ifla_linkinfo
 nlattr_ifla_port
 nlattr_ifla_xdp
 nlattr_inet_diag_msg
@@ -357,7 +342,6 @@ prctl-pdeathsig
 prctl-seccomp-filter-v
 prctl-seccomp-strict
 prctl-securebits
-prctl-spec-inject
 prctl-tid_address
 prctl-tsc
 pread64-pwrite64

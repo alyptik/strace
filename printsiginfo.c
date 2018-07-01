@@ -277,5 +277,5 @@ MPERS_PRINTER_DECL(void, print_siginfo_array, struct tcb *const tcp,
 	siginfo_t si;
 
 	print_array(tcp, addr, len, &si, sizeof(si),
-		    tfetch_mem, print_siginfo_t, 0);
+		    umoven_or_printaddr, print_siginfo_t, 0);
 }

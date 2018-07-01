@@ -2,7 +2,6 @@
  * Check decoding of kcmp syscall.
  *
  * Copyright (c) 2016-2017 Eugene Syromyatnikov <evgsyr@gmail.com>
- * Copyright (c) 2016-2018 The strace developers.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -168,7 +167,7 @@ main(void)
 
 	int fd;
 	unsigned i;
-	TAIL_ALLOC_OBJECT_CONST_PTR(struct kcmp_epoll_slot, slot);
+	struct kcmp_epoll_slot *slot = tail_alloc(sizeof(*slot));
 
 	/* Open some files to test printpidfd */
 	fd = open(null_path, O_RDONLY);

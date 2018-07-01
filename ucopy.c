@@ -154,6 +154,7 @@ umoven_peekdata(const int pid, kernel_ulong_t addr, unsigned int len,
  * Copy `len' bytes of data from process `pid'
  * at address `addr' to our space at `our_addr'.
  */
+#ifndef LIBPRINTSTRACE_COMPILE
 int
 umoven(struct tcb *const tcp, kernel_ulong_t addr, unsigned int len,
        void *const our_addr)
@@ -192,6 +193,7 @@ umoven(struct tcb *const tcp, kernel_ulong_t addr, unsigned int len,
 			return -1;
 	}
 }
+#endif
 
 /*
  * Like umoven_peekdata but make the additional effort of looking
@@ -260,6 +262,7 @@ umovestr_peekdata(const int pid, kernel_ulong_t addr, unsigned int len,
  * in laddr[] _after_ terminating NUL (but, of course,
  * we never write past laddr[len-1]).
  */
+#ifndef LIBPRINTSTRACE_COMPILE
 int
 umovestr(struct tcb *const tcp, kernel_ulong_t addr, unsigned int len,
 	 char *laddr)
@@ -326,3 +329,4 @@ umovestr(struct tcb *const tcp, kernel_ulong_t addr, unsigned int len,
 
 	return 0;
 }
+#endif

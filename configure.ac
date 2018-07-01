@@ -384,6 +384,7 @@ AC_CHECK_HEADERS(m4_normalize([
 	asm/cachectl.h
 	asm/guarded_storage.h
 	asm/sysmips.h
+	bluetooth/bluetooth.h
 	elf.h
 	iconv.h
 	inttypes.h
@@ -466,18 +467,8 @@ AC_CHECK_HEADERS([linux/input.h], [
 ])
 
 AC_CHECK_HEADERS([linux/bpf.h], [
-	AC_CHECK_TYPES(m4_normalize([
-		struct bpf_insn,
-		struct bpf_map_info,
-		struct bpf_prog_info
-	]),,, [#include <linux/bpf.h>])
+	AC_CHECK_TYPES([struct bpf_insn],,, [#include <linux/bpf.h>])
 	st_BPF_ATTR
-])
-
-AC_CHECK_HEADERS([bluetooth/bluetooth.h], [
-	AC_CHECK_MEMBERS([struct sockaddr_l2.l2_bdaddr_type],,,
-			 [#include <bluetooth/bluetooth.h>
-			 #include <bluetooth/l2cap.h>])
 ])
 
 AC_CHECK_TYPES(m4_normalize([
@@ -496,8 +487,7 @@ AC_CHECK_TYPES([struct netconfmsg],,, [#include <linux/netconf.h>])
 AC_CHECK_TYPES(m4_normalize([
 	struct rta_mfc_stats,
 	struct rtvia
-]),,, [#include <sys/socket.h>
-#include <linux/rtnetlink.h>])
+]),,, [#include <linux/rtnetlink.h>])
 
 AC_CHECK_MEMBERS([struct ndt_stats.ndts_table_fulls],,, [#include <linux/neighbour.h>])
 AC_CHECK_TYPES(m4_normalize([
@@ -507,23 +497,13 @@ AC_CHECK_TYPES(m4_normalize([
 
 AC_CHECK_TYPES(m4_normalize([
 	struct ifla_bridge_id,
-	struct ifla_cacheinfo,
 	struct ifla_port_vsi,
 	struct rtnl_link_stats64
-]),,, [#include <sys/socket.h>
-#include <linux/rtnetlink.h>])
+]),,, [#include <linux/if_link.h>])
 AC_CHECK_MEMBERS(m4_normalize([
 	struct rtnl_link_stats.rx_nohandler,
 	struct rtnl_link_stats64.rx_nohandler
-]),,, [#include <sys/socket.h>
-#include <linux/rtnetlink.h>])
-AC_CHECK_DECLS(m4_normalize([
-	IFLA_PORT_SELF,
-	IFLA_PROTINFO,
-	IFLA_AF_SPEC,
-	IFLA_XDP
-]),,, [#include <sys/socket.h>
-#include <linux/rtnetlink.h>])
+]),,, [#include <linux/if_link.h>])
 
 AC_CHECK_TYPES(m4_normalize([
 	struct gnet_stats_basic,
@@ -532,15 +512,9 @@ AC_CHECK_TYPES(m4_normalize([
 	struct gnet_stats_rate_est64
 ]),,, [#include <linux/gen_stats.h>])
 
-AC_CHECK_TYPES([struct tc_sizespec],,, [#include <linux/types.h>
-#include <linux/pkt_sched.h>])
-AC_CHECK_DECLS([TCA_STAB_DATA],,, [#include <linux/types.h>
-#include <linux/pkt_sched.h>])
+AC_CHECK_TYPES([struct tc_sizespec],,, [#include <linux/pkt_sched.h>])
 
-AC_CHECK_TYPES(m4_normalize([
-	struct fib_rule_uid_range,
-	struct fib_rule_port_range
-]),,, [#include <linux/fib_rules.h>])
+AC_CHECK_TYPES([struct fib_rule_uid_range],,, [#include <linux/fib_rules.h>])
 
 AC_CHECK_TYPES([struct statfs], [
 	AC_CHECK_MEMBERS(m4_normalize([
@@ -579,25 +553,6 @@ AC_CHECK_TYPES(m4_normalize([
 	struct kvm_sregs,
 	struct kvm_userspace_memory_region
 ]),,, [#include <linux/kvm.h>])
-
-saved_CPPFLAGS="$CPPFLAGS"
-
-AC_CACHE_CHECK([whether <linux/signal.h> can be used along with <signal.h>],
-	       [st_cv_linux_signal],
-	       [AC_COMPILE_IFELSE([AC_LANG_SOURCE([[
-#include <signal.h>
-#include <linux/signal.h>]],[])],
-				  [st_cv_linux_signal=yes],
-				  [st_cv_linux_signal=no])])
-if test "x$st_cv_linux_signal" = xno; then
-	mkdir -p linux/linux
-	cp $srcdir/linux/signal.h.in linux/linux/signal.h
-	CPPFLAGS="$CPPFLAGS -Ilinux"
-fi
-
-AC_CHECK_TYPES([struct __aio_sigset],,, [#include <linux/aio_abi.h>])
-
-CPPFLAGS="$saved_CPPFLAGS"
 
 AC_CHECK_HEADERS([linux/btrfs.h], [
 	AC_CHECK_MEMBERS(m4_normalize([

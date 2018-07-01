@@ -1,4 +1,3 @@
-#value_indexed
 AF_UNSPEC	0
 AF_UNIX		1
 AF_INET		2

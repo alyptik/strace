@@ -34,7 +34,37 @@ AC_DEFUN([st_BPF_ATTR], [dnl
 	AC_CHECK_MEMBERS(m4_normalize([
 EOF
 
-gawk -f "${0%/*}"/gen_bpf_attr_m4.awk < "$input" | sort -u
+fetch_structs()
+{
+	local name="${1:-}"
+	local name_re=
+	[ -z "$name" ] ||
+		name_re='\/\* '"$name"' \*\/ '
+
+	sed -n '/^struct BPF_[^[:space:]]\+_struct '"$name_re"'{/,/^};/p' < "$input"
+}
+
+filter_entries()
+{
+	local name="${1:-}"
+	local subtype=
+	[ -z "$name" ] ||
+		subtype=".$name"
+	local search='^[[:space:]]\+[^][;]*[[:space:]]\([^][[:space:];]\+\)\(\[[^;]*\]\)\?;$'
+	local replacement='\t\tunion bpf_attr'"$subtype"'.\1,'
+	sed -n "s/$search/$replacement/p" |
+		sort -u
+}
+
+# nameless structures in union bpf_attr
+fetch_structs |
+	filter_entries
+
+# named structures in union bpf_attr
+for name in $(sed -n 's/^struct BPF_[^[:space:]]\+_struct \/\* \([^[:space:]]\+\) \*\/ {.*/\1/p' < "$input"); do
+	fetch_structs "$name" |
+		filter_entries "$name"
+done
 
 cat <<'EOF'
 		union bpf_attr.dummy

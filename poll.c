@@ -57,7 +57,7 @@ decode_poll_entering(struct tcb *tcp)
 	struct pollfd fds;
 
 	print_array(tcp, addr, nfds, &fds, sizeof(fds),
-		    tfetch_mem, print_pollfd, 0);
+		    umoven_or_printaddr, print_pollfd, 0);
 	tprintf(", %u, ", nfds);
 }
 

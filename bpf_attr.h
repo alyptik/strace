@@ -28,30 +28,11 @@
 #ifndef STRACE_BPF_ATTR_H
 #define STRACE_BPF_ATTR_H
 
-/*
- * The policy is that all fields of type uint64_t in this header file
- * must have ATTRIBUTE_ALIGNED(8).
- *
- * This should not cause any contradictions with <linux/bpf.h>
- * unless the latter is buggy.
- *
- * By word "buggy" I mean containing such changes as Linux kernel commit
- * v4.16-rc1~123^2~109^2~5^2~4.
- */
-
 #ifndef BPF_OBJ_NAME_LEN
 # define BPF_OBJ_NAME_LEN 16U
 #else
 # if BPF_OBJ_NAME_LEN != 16U
 #  error "Unexpected value of BPF_OBJ_NAME_LEN"
-# endif
-#endif
-
-#ifndef BPF_TAG_SIZE
-# define BPF_TAG_SIZE 8
-#else
-# if BPF_TAG_SIZE != 8
-#  error "Unexpected value of BPF_TAG_SIZE"
 # endif
 #endif
 
@@ -85,7 +66,7 @@ struct BPF_MAP_UPDATE_ELEM_struct {
 	uint32_t map_fd;
 	uint64_t ATTRIBUTE_ALIGNED(8) key;
 	uint64_t ATTRIBUTE_ALIGNED(8) value;
-	uint64_t ATTRIBUTE_ALIGNED(8) flags;
+	uint64_t flags;
 };
 
 #define BPF_MAP_UPDATE_ELEM_struct_size \
@@ -123,12 +104,11 @@ struct BPF_PROG_LOAD_struct {
 	uint32_t prog_flags;
 	char     prog_name[BPF_OBJ_NAME_LEN];
 	uint32_t prog_ifindex;
-	uint32_t expected_attach_type;
 };
 
 #define BPF_PROG_LOAD_struct_size \
-	offsetofend(struct BPF_PROG_LOAD_struct, expected_attach_type)
-#define expected_BPF_PROG_LOAD_struct_size 72
+	offsetofend(struct BPF_PROG_LOAD_struct, prog_ifindex)
+#define expected_BPF_PROG_LOAD_struct_size 68
 
 struct BPF_OBJ_PIN_struct {
 	uint64_t ATTRIBUTE_ALIGNED(8) pathname;
@@ -234,61 +214,5 @@ struct BPF_PROG_QUERY_struct /* query */ {
 #define BPF_PROG_QUERY_struct_size \
 	offsetofend(struct BPF_PROG_QUERY_struct, prog_cnt)
 #define expected_BPF_PROG_QUERY_struct_size 28
-
-struct BPF_RAW_TRACEPOINT_OPEN_struct /* raw_tracepoint */ {
-	uint64_t ATTRIBUTE_ALIGNED(8) name;
-	uint32_t prog_fd;
-};
-
-#define BPF_RAW_TRACEPOINT_OPEN_struct_size \
-	offsetofend(struct BPF_RAW_TRACEPOINT_OPEN_struct, prog_fd)
-#define expected_BPF_RAW_TRACEPOINT_OPEN_struct_size 12
-
-struct bpf_map_info_struct {
-	uint32_t type;
-	uint32_t id;
-	uint32_t key_size;
-	uint32_t value_size;
-	uint32_t max_entries;
-	uint32_t map_flags;
-	char     name[BPF_OBJ_NAME_LEN];
-	uint32_t ifindex;
-	/*
-	 * The kernel UAPI is broken by Linux commit
-	 * v4.16-rc1~123^2~109^2~5^2~4 .
-	 */
-	uint64_t ATTRIBUTE_ALIGNED(8) netns_dev; /* skip check */
-	uint64_t ATTRIBUTE_ALIGNED(8) netns_ino; /* skip check */
-};
-
-#define bpf_map_info_struct_size \
-	sizeof(struct bpf_map_info_struct)
-#define expected_bpf_map_info_struct_size 64
-
-struct bpf_prog_info_struct {
-	uint32_t type;
-	uint32_t id;
-	uint8_t  tag[BPF_TAG_SIZE];
-	uint32_t jited_prog_len;
-	uint32_t xlated_prog_len;
-	uint64_t ATTRIBUTE_ALIGNED(8) jited_prog_insns;
-	uint64_t ATTRIBUTE_ALIGNED(8) xlated_prog_insns;
-	uint64_t ATTRIBUTE_ALIGNED(8) load_time;
-	uint32_t created_by_uid;
-	uint32_t nr_map_ids;
-	uint64_t ATTRIBUTE_ALIGNED(8) map_ids;
-	char     name[BPF_OBJ_NAME_LEN];
-	uint32_t ifindex;
-	/*
-	 * The kernel UAPI is broken by Linux commit
-	 * v4.16-rc1~123^2~227^2~5^2~2 .
-	 */
-	uint64_t ATTRIBUTE_ALIGNED(8) netns_dev; /* skip check */
-	uint64_t ATTRIBUTE_ALIGNED(8) netns_ino; /* skip check */
-};
-
-#define bpf_prog_info_struct_size \
-	sizeof(struct bpf_prog_info_struct)
-#define expected_bpf_prog_info_struct_size 104
 
 #endif /* !STRACE_BPF_ATTR_H */

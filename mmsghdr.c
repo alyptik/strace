@@ -34,13 +34,18 @@
 #include "xstring.h"
 #include <limits.h>
 
-static bool
-fetch_struct_mmsghdr_for_print(struct tcb *const tcp,
+static int
+fetch_struct_mmsghdr_or_printaddr(struct tcb *const tcp,
 				  const kernel_ulong_t addr,
 				  const unsigned int len, void *const mh)
 {
-	return (entering(tcp) || !syserror(tcp)) &&
-	       fetch_struct_mmsghdr(tcp, addr, mh);
+	if ((entering(tcp) || !syserror(tcp))
+	    && fetch_struct_mmsghdr(tcp, addr, mh)) {
+		return 0;
+	} else {
+		printaddr(addr);
+		return -1;
+	}
 }
 
 struct print_struct_mmsghdr_config {
@@ -141,7 +146,7 @@ decode_mmsgvec(struct tcb *const tcp, const kernel_ulong_t addr,
 	}
 
 	print_array(tcp, addr, vlen, &mmsg, sizeof_struct_mmsghdr(),
-		    fetch_struct_mmsghdr_for_print,
+		    fetch_struct_mmsghdr_or_printaddr,
 		    print_struct_mmsghdr, &c);
 }
 

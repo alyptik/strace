@@ -252,13 +252,6 @@ receive_responses(struct tcb *tcp, const int fd, const unsigned long inode,
 static bool
 unix_send_query(struct tcb *tcp, const int fd, const unsigned long inode)
 {
-	/*
-	 * The kernel bug was fixed in mainline by commit v4.5-rc6~35^2~11
-	 * and backported to stable/linux-4.4.y by commit v4.4.4~297.
-	 */
-	const uint16_t dump_flag =
-		os_release < KERNEL_VERSION(4, 4, 4) ? NLM_F_DUMP : 0;
-
 	struct {
 		const struct nlmsghdr nlh;
 		const struct unix_diag_req udr;
@@ -266,14 +259,13 @@ unix_send_query(struct tcb *tcp, const int fd, const unsigned long inode)
 		.nlh = {
 			.nlmsg_len = sizeof(req),
 			.nlmsg_type = SOCK_DIAG_BY_FAMILY,
-			.nlmsg_flags = NLM_F_REQUEST | dump_flag
+			.nlmsg_flags = NLM_F_DUMP | NLM_F_REQUEST
 		},
 		.udr = {
 			.sdiag_family = AF_UNIX,
 			.udiag_ino = inode,
 			.udiag_states = -1,
-			.udiag_show = UDIAG_SHOW_NAME | UDIAG_SHOW_PEER,
-			.udiag_cookie = { ~0U, ~0U }
+			.udiag_show = UDIAG_SHOW_NAME | UDIAG_SHOW_PEER
 		}
 	};
 	return send_query(tcp, fd, &req, sizeof(req));
@@ -371,7 +363,8 @@ netlink_send_query(struct tcb *tcp, const int fd, const unsigned long inode)
 		},
 		.ndr = {
 			.sdiag_family = AF_NETLINK,
-			.sdiag_protocol = NDIAG_PROTO_ALL
+			.sdiag_protocol = NDIAG_PROTO_ALL,
+			.ndiag_show = NDIAG_SHOW_MEMINFO
 		}
 	};
 	return send_query(tcp, fd, &req, sizeof(req));

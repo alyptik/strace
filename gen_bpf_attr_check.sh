@@ -38,13 +38,7 @@ cat <<EOF
 # define SoM(type_, member_) (sizeof(((type_ *)0)->member_))
 EOF
 
-for struct in $(sed -n 's/^struct \([^[:space:]]\+_struct\) .*/\1/p' < "$input"); do
-	case "$struct" in
-		BPF_*) type_name='union bpf_attr' ;;
-		*) type_name="struct ${struct%_struct}" ;;
-	esac
-	TYPE_NAME="$(printf %s "$type_name" |tr '[:lower:] ' '[:upper:]_')"
-
+for struct in $(sed -n 's/^struct \(BPF_[^[:space:]]\+_struct\) .*/\1/p' < "$input"); do
 	enum="$(sed -n 's/^struct '"$struct"' \/\* \([^[:space:]]\+\) \*\/ {.*/\1/p' < "$input")"
 	ENUM="$(printf %s "$enum" |tr '[:lower:]' '[:upper:]')"
 	enum="$enum${enum:+.}"
@@ -55,12 +49,12 @@ for struct in $(sed -n 's/^struct \([^[:space:]]\+_struct\) .*/\1/p' < "$input")
 		FIELD="$(printf %s "$field" |tr '[:lower:]' '[:upper:]')"
 		cat <<EOF
 
-# ifdef HAVE_${TYPE_NAME}_$ENUM$FIELD
-	static_assert(SoM(struct $struct, $field) == SoM($type_name, $enum$field),
+# ifdef HAVE_UNION_BPF_ATTR_$ENUM$FIELD
+	static_assert(SoM(struct $struct, $field) == SoM(union bpf_attr, $enum$field),
 		      "$struct.$field size mismatch");
-	static_assert(offsetof(struct $struct, $field) == offsetof($type_name, $enum$field),
+	static_assert(offsetof(struct $struct, $field) == offsetof(union bpf_attr, $enum$field),
 		      "$struct.$field offset mismatch");
-# endif /* HAVE_${TYPE_NAME}_$ENUM$FIELD */
+# endif /* HAVE_UNION_BPF_ATTR_$ENUM$FIELD */
 EOF
 	done
 		cat <<EOF

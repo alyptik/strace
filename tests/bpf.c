@@ -49,19 +49,6 @@
 #include "xlat.h"
 #include "xlat/bpf_commands.h"
 
-#if defined MPERS_IS_m32 || SIZEOF_KERNEL_LONG_T > 4
-# define BIG_ADDR(addr64_, addr32_) addr64_
-# define BIG_ADDR_MAYBE(addr_)
-#elif defined __arm__ || defined __i386__ || defined __mips__ \
-   || defined __powerpc__ || defined __riscv__ || defined __s390__ \
-   || defined __sparc__ || defined __tile__
-# define BIG_ADDR(addr64_, addr32_) addr64_ " or " addr32_
-# define BIG_ADDR_MAYBE(addr_) addr_ " or "
-#else
-# define BIG_ADDR(addr64_, addr32_) addr32_
-# define BIG_ADDR_MAYBE(addr_)
-#endif
-
 #ifndef HAVE_STRUCT_BPF_INSN
 struct bpf_insn {
 	uint8_t	code;
@@ -90,7 +77,6 @@ union bpf_attr_data {
 	BPF_ATTR_DATA_FIELD(BPF_MAP_GET_FD_BY_ID);
 	BPF_ATTR_DATA_FIELD(BPF_OBJ_GET_INFO_BY_FD);
 	BPF_ATTR_DATA_FIELD(BPF_PROG_QUERY);
-	BPF_ATTR_DATA_FIELD(BPF_RAW_TRACEPOINT_OPEN);
 	char char_data[256];
 };
 
@@ -120,20 +106,7 @@ static long
 sys_bpf(kernel_ulong_t cmd, kernel_ulong_t attr, kernel_ulong_t size)
 {
 	long rc = syscall(__NR_bpf, cmd, attr, size);
-
 	errstr = sprintrc(rc);
-
-#ifdef INJECT_RETVAL
-	if (rc != INJECT_RETVAL)
-		error_msg_and_fail("Got a return value of %ld != %d",
-				   rc, INJECT_RETVAL);
-
-	static char inj_errstr[4096];
-
-	snprintf(inj_errstr, sizeof(inj_errstr), "%s (INJECTED)", errstr);
-	errstr = inj_errstr;
-#endif
-
 	return rc;
 }
 
@@ -492,96 +465,53 @@ static const struct bpf_attr_check BPF_MAP_GET_NEXT_KEY_checks[] = {
 };
 
 static const struct bpf_insn insns[] = {
-	{
-		.code = 0x95,
-		.dst_reg = 10,
-		.src_reg = 11,
-		.off = 0xdead,
-		.imm = 0xbadc0ded,
-	},
+	{ .code = 0x95 }
 };
 static const char license[] = "GPL";
+static char log_buf[4096];
 static const char pathname[] = "/sys/fs/bpf/foo/bar";
-
-static char *log_buf;
-/*
- * This has to be a macro, otherwise the compiler complains that
- * initializer element is not constant.
- */
-#define log_buf_size 4096U
-
-static inline char *
-get_log_buf(void)
-{
-	if (!log_buf)
-		log_buf = tail_alloc(log_buf_size);
-	return log_buf;
-}
-
-static inline char *
-get_log_buf_tail(void)
-{
-	return get_log_buf() + log_buf_size;
-}
-
-#if VERBOSE
-# define INSNS_FMT \
-	"[{code=BPF_JMP|BPF_K|BPF_EXIT, dst_reg=BPF_REG_10" \
-	", src_reg=0xb /* BPF_REG_??? */, off=%d, imm=%#x}]"
-# define INSNS_ARG insns[0].off, insns[0].imm
-#else
-# define INSNS_FMT "%p"
-# define INSNS_ARG insns
-#endif
 
 static void
 init_BPF_PROG_LOAD_attr3(struct bpf_attr_check *check)
 {
 	struct BPF_PROG_LOAD_struct *attr = &check->data.BPF_PROG_LOAD_data;
-
 	attr->insns = (uintptr_t) insns;
 	attr->license = (uintptr_t) license;
-	attr->log_buf = (uintptr_t) get_log_buf_tail();
+	attr->log_buf = (uintptr_t) log_buf;
 }
 
 static void
 print_BPF_PROG_LOAD_attr3(const struct bpf_attr_check *check, unsigned long addr)
 {
-	printf("prog_type=BPF_PROG_TYPE_SOCKET_FILTER, insn_cnt=%u"
-	       ", insns=" INSNS_FMT ", license=\"%s\", log_level=2718281828"
-	       ", log_size=%u, log_buf=%p"
-	       ", kern_version=KERNEL_VERSION(51966, 240, 13)"
+	printf("prog_type=BPF_PROG_TYPE_SOCKET_FILTER, insn_cnt=%u, insns=%p"
+	       ", license=\"%s\", log_level=2718281828, log_size=4096"
+	       ", log_buf=%p, kern_version=KERNEL_VERSION(51966, 240, 13)"
 	       ", prog_flags=0x2 /* BPF_F_??? */"
 	       ", prog_name=\"0123456789abcde\"..., prog_ifindex=3203399405",
-	       (unsigned int) ARRAY_SIZE(insns), INSNS_ARG, license,
-	       log_buf_size, get_log_buf_tail());
+	       (unsigned int) ARRAY_SIZE(insns), insns,
+	       license, log_buf);
 }
 
 static void
 init_BPF_PROG_LOAD_attr4(struct bpf_attr_check *check)
 {
 	struct BPF_PROG_LOAD_struct *attr = &check->data.BPF_PROG_LOAD_data;
-
 	attr->insns = (uintptr_t) insns;
 	attr->license = (uintptr_t) license;
-	attr->log_buf = (uintptr_t) get_log_buf();
+	attr->log_buf = (uintptr_t) log_buf;
 	attr->prog_ifindex = ifindex_lo();
-
-	strncpy(log_buf, "log test", 9);
 }
 
 static void
 print_BPF_PROG_LOAD_attr4(const struct bpf_attr_check *check, unsigned long addr)
 {
-	printf("prog_type=BPF_PROG_TYPE_UNSPEC, insn_cnt=%u, insns=" INSNS_FMT
-	       ", license=\"%s\", log_level=2718281828, log_size=4"
-	       ", log_buf=\"log \"..."
-	       ", kern_version=KERNEL_VERSION(51966, 240, 13)"
+	printf("prog_type=BPF_PROG_TYPE_UNSPEC, insn_cnt=%u, insns=%p"
+	       ", license=\"%s\", log_level=2718281828, log_size=4096"
+	       ", log_buf=%p, kern_version=KERNEL_VERSION(51966, 240, 13)"
 	       ", prog_flags=BPF_F_STRICT_ALIGNMENT|0x2"
-	       ", prog_name=\"0123456789abcde\"..., prog_ifindex=%s"
-	       ", expected_attach_type=BPF_CGROUP_INET6_BIND",
-	       (unsigned int) ARRAY_SIZE(insns), INSNS_ARG,
-	       license, IFINDEX_LO_STR);
+	       ", prog_name=\"0123456789abcde\"..., prog_ifindex=%s",
+	       (unsigned int) ARRAY_SIZE(insns), insns,
+	       license, log_buf, IFINDEX_LO_STR);
 }
 
 static struct bpf_attr_check BPF_PROG_LOAD_checks[] = {
@@ -593,7 +523,7 @@ static struct bpf_attr_check BPF_PROG_LOAD_checks[] = {
 	},
 	{ /* 1 */
 		.data = { .BPF_PROG_LOAD_data = {
-			.prog_type = 18,
+			.prog_type = 16,
 			.insn_cnt = 0xbadc0ded,
 			.insns = 0,
 			.license = 0,
@@ -604,7 +534,7 @@ static struct bpf_attr_check BPF_PROG_LOAD_checks[] = {
 			.prog_flags = 0,
 		} },
 		.size = offsetofend(struct BPF_PROG_LOAD_struct, prog_flags),
-		.str = "prog_type=0x12 /* BPF_PROG_TYPE_??? */"
+		.str = "prog_type=0x10 /* BPF_PROG_TYPE_??? */"
 		       ", insn_cnt=3134983661, insns=NULL, license=NULL"
 		       ", log_level=42, log_size=3141592653, log_buf=NULL"
 		       ", kern_version=KERNEL_VERSION(51966, 240, 13)"
@@ -612,24 +542,31 @@ static struct bpf_attr_check BPF_PROG_LOAD_checks[] = {
 	},
 	{ /* 2 */
 		.data = { .BPF_PROG_LOAD_data = {
-			.prog_type = 17,
+			.prog_type = 15,
 			.insn_cnt = 0xbadc0ded,
 			.insns = 0xffffffff00000000,
 			.license = 0xffffffff00000000,
 			.log_level = 2718281828U,
-			.log_size = log_buf_size,
+			.log_size = sizeof(log_buf),
 			.log_buf = 0xffffffff00000000,
 			.kern_version = 0xcafef00d,
 			.prog_flags = 1,
 			.prog_name = "fedcba987654321",
 		} },
 		.size = offsetofend(struct BPF_PROG_LOAD_struct, prog_name),
-		.str = "prog_type=BPF_PROG_TYPE_RAW_TRACEPOINT"
-		       ", insn_cnt=3134983661"
-		       ", insns=" BIG_ADDR("0xffffffff00000000", "NULL")
-		       ", license=" BIG_ADDR("0xffffffff00000000", "NULL")
+		.str = "prog_type=BPF_PROG_TYPE_CGROUP_DEVICE"
+		       ", insn_cnt=3134983661, insns=0xffffffff00000000"
+#if defined MPERS_IS_m32 || SIZEOF_KERNEL_LONG_T > 4
+		       ", license=0xffffffff00000000"
+#elif defined __arm__ || defined __i386__ || defined __mips__ || \
+      defined __powerpc__ || defined __riscv__ || defined __s390__ \
+      || defined __sparc__ || defined __tile__
+		       ", license=0xffffffff00000000 or NULL"
+#else
+		       ", license=NULL"
+#endif
 		       ", log_level=2718281828, log_size=4096"
-		       ", log_buf=" BIG_ADDR("0xffffffff00000000", "NULL")
+		       ", log_buf=0xffffffff00000000"
 		       ", kern_version=KERNEL_VERSION(51966, 240, 13)"
 		       ", prog_flags=BPF_F_STRICT_ALIGNMENT"
 		       ", prog_name=\"fedcba987654321\"",
@@ -639,7 +576,7 @@ static struct bpf_attr_check BPF_PROG_LOAD_checks[] = {
 			.prog_type = 1,
 			.insn_cnt = ARRAY_SIZE(insns),
 			.log_level = 2718281828U,
-			.log_size = log_buf_size,
+			.log_size = sizeof(log_buf),
 			.kern_version = 0xcafef00d,
 			.prog_flags = 2,
 			.prog_name = "0123456789abcdef",
@@ -654,14 +591,12 @@ static struct bpf_attr_check BPF_PROG_LOAD_checks[] = {
 			.prog_type = 0,
 			.insn_cnt = ARRAY_SIZE(insns),
 			.log_level = 2718281828U,
-			.log_size = 4,
+			.log_size = sizeof(log_buf),
 			.kern_version = 0xcafef00d,
 			.prog_flags = 3,
 			.prog_name = "0123456789abcdef",
-			.expected_attach_type = 9,
 		} },
-		.size = offsetofend(struct BPF_PROG_LOAD_struct,
-				    expected_attach_type),
+		.size = offsetofend(struct BPF_PROG_LOAD_struct, prog_ifindex),
 		.init_fn = init_BPF_PROG_LOAD_attr4,
 		.print_fn = print_BPF_PROG_LOAD_attr4
 	},
@@ -685,7 +620,16 @@ static struct bpf_attr_check BPF_OBJ_PIN_checks[] = {
 			.pathname = 0xFFFFFFFFFFFFFFFFULL
 		} },
 		.size = offsetofend(struct BPF_OBJ_PIN_struct, pathname),
-		.str = "pathname=" BIG_ADDR("0xffffffffffffffff", "0xffffffff")
+		.str = "pathname="
+#if defined MPERS_IS_m32 || SIZEOF_KERNEL_LONG_T > 4
+		       "0xffffffffffffffff"
+#elif defined __arm__ || defined __i386__ || defined __mips__ || \
+      defined __powerpc__ || defined __riscv__ || defined __s390__ \
+      || defined __sparc__ || defined __tile__
+		       "0xffffffffffffffff or 0xffffffff"
+#else
+		       "0xffffffff"
+#endif
 		       ", bpf_fd=0",
 	},
 	{
@@ -877,7 +821,7 @@ static const struct bpf_attr_check BPF_OBJ_GET_INFO_BY_FD_checks[] = {
 	{
 		.data = { .BPF_OBJ_GET_INFO_BY_FD_data = { .bpf_fd = -1 } },
 		.size = offsetofend(struct BPF_OBJ_GET_INFO_BY_FD_struct, bpf_fd),
-		.str = "info={bpf_fd=-1, info_len=0, info=NULL}"
+		.str = "info={bpf_fd=-1, info_len=0, info=0}"
 	},
 	{
 		.data = { .BPF_OBJ_GET_INFO_BY_FD_data = {
@@ -892,68 +836,8 @@ static const struct bpf_attr_check BPF_OBJ_GET_INFO_BY_FD_checks[] = {
 };
 
 
-static uint32_t prog_load_ids[] = { 0, 1, 0xffffffff, 2718281828, };
-uint32_t *prog_load_ids_ptr;
-
-static void
-init_BPF_PROG_QUERY_attr4(struct bpf_attr_check *check)
-{
-	struct BPF_PROG_QUERY_struct *attr = &check->data.BPF_PROG_QUERY_data;
-
-	if (!prog_load_ids_ptr)
-		prog_load_ids_ptr = tail_memdup(prog_load_ids,
-						sizeof(prog_load_ids));
-
-	attr->prog_ids = (uintptr_t) prog_load_ids_ptr;
-	attr->prog_cnt = ARRAY_SIZE(prog_load_ids);
-}
-
-static void
-print_BPF_PROG_QUERY_attr4(const struct bpf_attr_check *check, unsigned long addr)
-{
-	printf("query={target_fd=-1153374643"
-	       ", attach_type=0xfeedface /* BPF_??? */"
-	       ", query_flags=BPF_F_QUERY_EFFECTIVE|0xdeadf00c"
-	       ", attach_flags=BPF_F_ALLOW_MULTI|0xbeefcafc"
-#if defined(INJECT_RETVAL) && INJECT_RETVAL > 0
-	       ", prog_ids=[0, 1, 4294967295, 2718281828], prog_cnt=4}"
-#else
-	       ", prog_ids=%p, prog_cnt=4}", prog_load_ids_ptr
-#endif
-	       );
-}
-
-static void
-init_BPF_PROG_QUERY_attr5(struct bpf_attr_check *check)
-{
-	struct BPF_PROG_QUERY_struct *attr = &check->data.BPF_PROG_QUERY_data;
-
-	if (!prog_load_ids_ptr)
-		prog_load_ids_ptr = tail_memdup(prog_load_ids,
-						sizeof(prog_load_ids));
-
-	attr->prog_ids = (uintptr_t) prog_load_ids_ptr;
-	attr->prog_cnt = ARRAY_SIZE(prog_load_ids) + 1;
-}
-
-static void
-print_BPF_PROG_QUERY_attr5(const struct bpf_attr_check *check, unsigned long addr)
-{
-	printf("query={target_fd=-1153374643"
-	       ", attach_type=0xfeedface /* BPF_??? */"
-	       ", query_flags=BPF_F_QUERY_EFFECTIVE|0xdeadf00c"
-	       ", attach_flags=BPF_F_ALLOW_MULTI|0xbeefcafc"
-#if defined(INJECT_RETVAL) && INJECT_RETVAL > 0
-	       ", prog_ids=[0, 1, 4294967295, 2718281828, ... /* %p */]"
-	       ", prog_cnt=5}",
-	       prog_load_ids_ptr + ARRAY_SIZE(prog_load_ids)
-#else
-	       ", prog_ids=%p, prog_cnt=5}", prog_load_ids_ptr
-#endif
-	       );
-}
-
-static struct bpf_attr_check BPF_PROG_QUERY_checks[] = {
+/* TODO: This is a read/write cmd and we do not check exiting path yet */
+static const struct bpf_attr_check BPF_PROG_QUERY_checks[] = {
 	{
 		.data = { .BPF_PROG_QUERY_data = { .target_fd = -1 } },
 		.size = offsetofend(struct BPF_PROG_QUERY_struct, target_fd),
@@ -964,13 +848,13 @@ static struct bpf_attr_check BPF_PROG_QUERY_checks[] = {
 	{ /* 1 */
 		.data = { .BPF_PROG_QUERY_data = {
 			.target_fd = 3141592653U,
-			.attach_type = 13,
+			.attach_type = 6,
 			.query_flags = 1,
 			.attach_flags = 3,
 		} },
 		.size = offsetofend(struct BPF_PROG_QUERY_struct, attach_flags),
 		.str = "query={target_fd=-1153374643"
-		       ", attach_type=BPF_CGROUP_INET6_POST_BIND"
+		       ", attach_type=BPF_CGROUP_DEVICE"
 		       ", query_flags=BPF_F_QUERY_EFFECTIVE"
 		       ", attach_flags=BPF_F_ALLOW_OVERRIDE|BPF_F_ALLOW_MULTI"
 		       ", prog_ids=NULL, prog_cnt=0}",
@@ -978,7 +862,7 @@ static struct bpf_attr_check BPF_PROG_QUERY_checks[] = {
 	{ /* 2 */
 		.data = { .BPF_PROG_QUERY_data = {
 			.target_fd = 3141592653U,
-			.attach_type = 14,
+			.attach_type = 7,
 			.query_flags = 0xfffffffe,
 			.attach_flags = 0xfffffffc,
 			.prog_ids = 0xffffffffffffffffULL,
@@ -986,12 +870,10 @@ static struct bpf_attr_check BPF_PROG_QUERY_checks[] = {
 		} },
 		.size = offsetofend(struct BPF_PROG_QUERY_struct, prog_cnt),
 		.str = "query={target_fd=-1153374643"
-		       ", attach_type=0xe /* BPF_??? */"
+		       ", attach_type=0x7 /* BPF_??? */"
 		       ", query_flags=0xfffffffe /* BPF_F_QUERY_??? */"
 		       ", attach_flags=0xfffffffc /* BPF_F_??? */"
-		       ", prog_ids="
-		       BIG_ADDR("0xffffffffffffffff", "0xffffffff")
-		       ", prog_cnt=2718281828}",
+		       ", prog_ids=0xffffffffffffffff, prog_cnt=2718281828}",
 	},
 	{ /* 3 */
 		.data = { .BPF_PROG_QUERY_data = {
@@ -1007,75 +889,8 @@ static struct bpf_attr_check BPF_PROG_QUERY_checks[] = {
 		       ", attach_type=0xfeedface /* BPF_??? */"
 		       ", query_flags=BPF_F_QUERY_EFFECTIVE|0xdeadf00c"
 		       ", attach_flags=BPF_F_ALLOW_MULTI|0xbeefcafc"
-		       ", prog_ids=" BIG_ADDR_MAYBE("0xffffffffffffffff") "[]"
-		       ", prog_cnt=0}",
+		       ", prog_ids=0xffffffffffffffff, prog_cnt=0}",
 	},
-	{ /* 4 */
-		.data = { .BPF_PROG_QUERY_data = {
-			.target_fd = 3141592653U,
-			.attach_type = 0xfeedface,
-			.query_flags = 0xdeadf00d,
-			.attach_flags = 0xbeefcafe,
-		} },
-		.size = offsetofend(struct BPF_PROG_QUERY_struct, prog_cnt),
-		.init_fn = init_BPF_PROG_QUERY_attr4,
-		.print_fn = print_BPF_PROG_QUERY_attr4,
-	},
-	{ /* 5 */
-		.data = { .BPF_PROG_QUERY_data = {
-			.target_fd = 3141592653U,
-			.attach_type = 0xfeedface,
-			.query_flags = 0xdeadf00d,
-			.attach_flags = 0xbeefcafe,
-		} },
-		.size = offsetofend(struct BPF_PROG_QUERY_struct, prog_cnt),
-		.init_fn = init_BPF_PROG_QUERY_attr5,
-		.print_fn = print_BPF_PROG_QUERY_attr5,
-	},
-};
-
-
-static void
-init_BPF_RAW_TRACEPOINT_attr2(struct bpf_attr_check *check)
-{
-	/* TODO: test the 128 byte limit */
-	static const char tp_name[] = "0123456789qwertyuiop0123456789qwe";
-
-	struct BPF_RAW_TRACEPOINT_OPEN_struct *attr =
-		&check->data.BPF_RAW_TRACEPOINT_OPEN_data;
-
-	attr->name = (uintptr_t) tp_name;
-}
-
-static struct bpf_attr_check BPF_RAW_TRACEPOINT_OPEN_checks[] = {
-	{
-		.data = { .BPF_RAW_TRACEPOINT_OPEN_data = { .name = 0 } },
-		.size = offsetofend(struct BPF_RAW_TRACEPOINT_OPEN_struct,
-				    name),
-		.str = "raw_tracepoint={name=NULL, prog_fd=0}",
-	},
-	{ /* 1 */
-		.data = { .BPF_RAW_TRACEPOINT_OPEN_data = {
-			.name = 0xffffffff00000000ULL,
-			.prog_fd = 0xdeadbeef,
-		} },
-		.size = offsetofend(struct BPF_RAW_TRACEPOINT_OPEN_struct,
-				    prog_fd),
-		.str = "raw_tracepoint="
-		       "{name=" BIG_ADDR("0xffffffff00000000", "NULL")
-		       ", prog_fd=-559038737}",
-	},
-	{
-		.data = { .BPF_RAW_TRACEPOINT_OPEN_data = {
-			.prog_fd = 0xdeadbeef,
-		} },
-		.size = offsetofend(struct BPF_RAW_TRACEPOINT_OPEN_struct,
-				    prog_fd),
-		.init_fn = init_BPF_RAW_TRACEPOINT_attr2,
-		.str = "raw_tracepoint="
-		       "{name=\"0123456789qwertyuiop0123456789qw\"..."
-		       ", prog_fd=-559038737}",
-	}
 };
 
 
@@ -1107,7 +922,6 @@ main(void)
 		CHK(BPF_MAP_GET_FD_BY_ID),
 		CHK(BPF_OBJ_GET_INFO_BY_FD),
 		CHK(BPF_PROG_QUERY),
-		CHK(BPF_RAW_TRACEPOINT_OPEN),
 	};
 
 	page_size = get_page_size();

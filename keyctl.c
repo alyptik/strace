@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2015 Dmitry V. Levin <ldv@altlinux.org>
- * Copyright (c) 2014-2018 The strace developers.
+ * Copyright (c) 2014-2017 The strace developers.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -190,8 +190,12 @@ keyctl_reject_key(struct tcb *tcp, key_serial_t id1, unsigned timeout,
 
 	print_keyring_serial_number(id1);
 	tprintf(", %u, ", timeout);
-	print_xlat_ex(error, err_str, XLAT_STYLE_FMT_U);
-	tprints(", ");
+
+	if (err_str)
+		tprintf("%s, ", err_str);
+	else
+		tprintf("%u, ", error);
+
 	print_keyring_serial_number(id2);
 }
 
@@ -387,8 +391,7 @@ SYS_FUNC(keyctl)
 		break;
 
 	case KEYCTL_SET_REQKEY_KEYRING:
-		printxvals_ex((int) arg2, "KEY_REQKEY_DEFL_???",
-			      XLAT_STYLE_FMT_D, key_reqkeys, NULL);
+		printxval(key_reqkeys, arg2, "KEY_REQKEY_DEFL_???");
 		break;
 
 	case KEYCTL_SET_TIMEOUT:
